@@ -3,7 +3,9 @@ from pathlib import Path
 from file_tools import (
     search_documents,
     search_by_name,
-    search_in_contents
+    search_in_contents,
+    search_in_all_pdfs,
+    search_in_pdf
 )
 
 
@@ -89,23 +91,35 @@ def main():
             content_keyword = extract_content_keyword(message)
 
             if content_keyword is not None:
-                results = search_in_contents(
+                results = search_in_all_pdfs(
                     houss,
                     content_keyword
                 )
 
                 print(
+                    f"Assistant > {len(results)} résulta(s) "
+                    f"PDF pour '{content_keyword}' ."
+                )
+
+                for path, page_number, snippet in results:
+                    print(
+                        f"\n{path}"
+                        f"\nLigne {page_number} "
+                        f"\n...{snippet}..."
+                    )
+
+            else  : 
+                results = search_in_contents(houss, content_keyword)
+                print(
                     f"Assistant > {len(results)} fichiers "
                     f"contenant '{content_keyword}' trouvés."
                 )
-
                 for path, line_number, line in results:
                     print(
                         f"\n{path}"
                         f"\nLigne {line_number} : {line}"
                     )
-
-                continue
+            continue
 
             extension = extract_extension(message)
 

@@ -1,4 +1,5 @@
 from pathlib import Path
+import pymupdf
 
 
 def search_documents(folder, extension):
@@ -79,5 +80,72 @@ def search_in_contents(folder, keyword):
 
         except (PermissionError, OSError):
             continue
+
+    return results
+
+def search_in_pdf(pdf_path, keyword):
+    pdf_path = Path(pdf_path)
+
+    if not pdf_path.exists():
+        return []
+
+    keyword_lower = keyword.lower()
+    results = []
+
+    try:
+        document = pymupdf.open(pdf_path)
+
+        for page_number, page in enumerate(document, start=1):
+            text = page.get_text()
+            text_lower = text.lower()
+
+            position = text_lower.find(keyword_lower)
+
+            if position != -1:
+                start = max(0, position - 100)
+                end = min(len(text), position + len(keyword) + 100)
+
+                snippet = text[start:end].strip()
+
+                results.append(
+                    (
+                        page_number,
+                        snippet
+                    )
+                )
+
+        document.close()
+
+    except (OSError, RuntimeError):
+        return []
+
+    return results
+
+def search_in_all_pdfs(folder, keyword):
+    folder = Path(folder)
+
+    if not folder.exists():
+        return []
+
+    results = []
+
+    for pdf_path in folder.rglob("*.pdf"):
+
+        if not pdf_path.is_file():
+            continue
+
+        matches = search_in_pdf(
+            pdf_path,
+            keyword
+        )
+
+        for page_number, snippet in matches:
+            results.append(
+                (
+                    pdf_path,
+                    page_number,
+                    text
+                )
+            )
 
     return results
