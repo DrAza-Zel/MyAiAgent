@@ -3,10 +3,10 @@ from pathlib import Path
 from file_tools import (
     search_documents,
     search_by_name,
-    search_in_contents,
-    search_in_all_pdfs,
-    search_in_pdf
+    search_content
 )
+
+from math_tools import calculate
 
 
 def detect_intent(message):
@@ -72,6 +72,36 @@ def extract_content_keyword(message):
     return keyword
 
 
+def extract_file_type(message):
+    message = message.lower()
+
+    if "pdf" in message:
+        return "pdf"
+
+    elif "word" in message or "docx" in message:
+        return "docx"
+
+    else:
+        return None
+
+
+def extract_math_expression(message):
+    message = message.lower()
+
+    if "calcule" not in message:
+        return None
+
+    expression = message.split(
+        "calcule",
+        1
+    )[1].strip()
+
+    if expression == "":
+        return None
+
+    return expression
+
+
 def main():
     print("Assistant démarré.")
     print("Écris 'quit' pour quitter.\n")
@@ -88,39 +118,35 @@ def main():
         if intent == "SEARCH":
             houss = Path.home()
 
+            # Recherche dans le contenu
             content_keyword = extract_content_keyword(message)
 
             if content_keyword is not None:
-                results = search_in_all_pdfs(
+                file_type = extract_file_type(message)
+
+                results = search_content(
                     houss,
-                    content_keyword
+                    content_keyword,
+                    file_type
                 )
 
                 print(
-                    f"Assistant > {len(results)} résulta(s) "
-                    f"PDF pour '{content_keyword}' ."
+                    f"Assistant > {len(results)} résultat(s) trouvés."
                 )
 
-                for path, page_number, snippet in results:
+                for result in results:
+                    print(f"\n{result['path']}")
+
                     print(
-                        f"\n{path}"
-                        f"\nLigne {page_number} "
-                        f"\n...{snippet}..."
+                        f"{result['location_type']} "
+                        f"{result['position']}"
                     )
 
-            else  : 
-                results = search_in_contents(houss, content_keyword)
-                print(
-                    f"Assistant > {len(results)} fichiers "
-                    f"contenant '{content_keyword}' trouvés."
-                )
-                for path, line_number, line in results:
-                    print(
-                        f"\n{path}"
-                        f"\nLigne {line_number} : {line}"
-                    )
-            continue
+                    print(result["snippet"])
 
+                continue
+
+            # Recherche par extension
             extension = extract_extension(message)
 
             if extension is not None:
@@ -134,11 +160,14 @@ def main():
                     f"{extension} trouvés."
                 )
 
+            # Recherche par nom
             else:
                 keyword = extract_keyword(message)
 
                 if keyword is None:
-                    print("Assistant > Que veux-tu rechercher ?")
+                    print(
+                        "Assistant > Que veux-tu rechercher ?"
+                    )
                     continue
 
                 files = search_by_name(
@@ -153,6 +182,37 @@ def main():
 
             for file in files:
                 print(file)
+
+        elif intent == "MATH":
+            expression = extract_math_expression(
+                message
+            )
+
+            if expression is None:
+                print(
+                    "Assistant > Quelle expression "
+                    "veux-tu calculer ?"
+                )
+                continue
+
+            try:
+                result = calculate(expression)
+
+                print(
+                    f"Assistant > Résultat : {result}"
+                )
+
+            except (
+                ValueError,
+                SyntaxError,
+                ZeroDivisionError,
+                TypeError
+            ) as error:
+
+                print(
+                    f"Assistant > Calcul impossible : "
+                    f"{error}"
+                )
 
         else:
             print(

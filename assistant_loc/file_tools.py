@@ -1,5 +1,6 @@
 from pathlib import Path
 import pymupdf
+from docx import Document
 
 
 def search_documents(folder, extension):
@@ -144,8 +145,112 @@ def search_in_all_pdfs(folder, keyword):
                 (
                     pdf_path,
                     page_number,
+                    snippet
+                )
+            )
+
+    return results
+
+def search_in_docx(docx_path, keyword):
+    docx_path = Path(docx_path)
+
+    if not docx_path.exists():
+        return []
+
+    keyword_lower = keyword.lower()
+    results = []
+
+    try:
+        document = Document(docx_path)
+
+        for paragraph_number, paragraph in enumerate(
+            document.paragraphs,
+            start=1
+        ):
+            text = paragraph.text
+
+            if keyword_lower in text.lower():
+                results.append(
+                    (
+                        paragraph_number,
+                        text.strip()
+                    )
+                )
+
+    except (OSError, ValueError):
+        return []
+
+    return results
+
+def search_in_all_docx(folder, keyword):
+    folder = Path(folder)
+
+    if not folder.exists():
+        return []
+
+    results = []
+
+    for docx_path in folder.rglob("*.docx"):
+
+        if not docx_path.is_file():
+            continue
+
+        matches = search_in_docx(
+            docx_path,
+            keyword
+        )
+
+        for paragraph_number, text in matches:
+            results.append(
+                (
+                    docx_path,
+                    paragraph_number,
                     text
                 )
             )
+
+    return results
+
+def search_content(folder, keyword, file_type=None):
+
+    if file_type == "pdf":
+        raw_results = search_in_all_pdfs(
+            folder,
+            keyword
+        )
+
+        location_type = "Page"
+        result_file_type = "pdf"
+
+    elif file_type == "docx":
+        raw_results = search_in_all_docx(
+            folder,
+            keyword
+        )
+
+        location_type = "Paragraphe"
+        result_file_type = "docx"
+
+    else:
+        raw_results = search_in_contents(
+            folder,
+            keyword
+        )
+
+        location_type = "Ligne"
+        result_file_type = "text"
+
+    results = []
+
+    for path, position, snippet in raw_results:
+        result = {
+            "path": path,
+            "file_type": result_file_type,
+            "location_type": location_type,
+            "position": position,
+            "snippet": snippet
+        }
+
+        results.append(result)
 
     return results
